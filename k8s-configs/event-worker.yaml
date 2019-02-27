@@ -2,27 +2,24 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   labels:
-    app: api-server
-  name: api-server
+    app: event-worker
+  name: event-worker
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: api-server
+      app: event-worker
   template:
     metadata:
       labels:
-        app: api-server
+        app: event-worker
     spec:
       containers:
       - command:
-        - flask
-        - run
-        - --host=0.0.0.0
+        - python
+        - event-worker.py
         env:
-        - name: FLASK_APP
-          value: api-server.py
         - name: REDIS_HOST
           value: redis
-        image: briandeheus/api-server:v1
+        image: briandeheus/event-worker:v1
         name: api-server

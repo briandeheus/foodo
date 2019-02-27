@@ -1,0 +1,18 @@
+piVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: "foodo"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /*
+        backend:
+          serviceName: api-server
+          servicePort: 5000
+      - path: /ws
+        backend:
+          serviceName: socket-server
+          servicePort: 8000

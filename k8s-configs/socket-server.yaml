@@ -1,0 +1,27 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: socket-server
+  name: socket-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: socket-server
+  template:
+    metadata:
+      labels:
+        app: socket-server
+    spec:
+      containers:
+      - command:
+        - node
+        - socket-server.js
+        env:
+        - name: REDIS_HOST
+          value: redis
+        image: briandeheus/socket-server:v1
+        name: api-server
+        ports:
+        - containerPort: 8000
