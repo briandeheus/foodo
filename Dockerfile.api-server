@@ -1,0 +1,10 @@
+FROM python:3.6-alpine
+
+RUN mkdir /opt/ \
+    mkdir /opt/app;
+
+WORKDIR /opt/app
+
+COPY . .
+
+RUN pip install -r requirements.txt

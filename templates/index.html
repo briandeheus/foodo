@@ -1,0 +1,410 @@
+<html>
+    <head>
+        <link href="https://fonts.googleapis.com/css?family=Sacramento|Lato" rel="stylesheet">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
+              integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr"
+              crossorigin="anonymous">
+        <title>FooDo List | A million dollar application</title>
+        <style>
+
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                font-size: 18px;
+                font-family: 'Lato', sans-serif;
+                color: #333;
+            }
+
+            button {
+                cursor: pointer;
+                background-color: #AD1457;
+                color: white;
+                font-family: 'Lato', sans-serif;
+                border: 0;
+                font-size: 18px;
+            }
+
+            input {
+                font-size: 18px;
+                font-family: 'Lato', sans-serif;
+            }
+
+            #top {
+                font-family: 'Sacramento', cursive;
+                text-align: center;
+            }
+
+            #top h1 {
+                font-size: 4em;
+                margin: 0;
+            }
+
+            .view {
+                display: none
+            }
+
+            .view.view__active {
+                display: block;
+            }
+
+            #spinner {
+                text-align: center;
+            }
+
+            #landing {
+                text-align: center;
+            }
+
+            #landing button {
+                font-size: 2em;
+                padding: 16px;
+            }
+
+            #list {
+                width: 400px;
+                margin: 0 auto;
+            }
+
+            /**
+            Kindly borrowed from https://loading.io/css/
+             */
+            .lds-ring {
+                display: inline-block;
+                position: relative;
+                width: 64px;
+                height: 64px;
+            }
+
+            .lds-ring div {
+                box-sizing: border-box;
+                display: block;
+                position: absolute;
+                width: 51px;
+                height: 51px;
+                margin: 6px;
+                border: 6px solid #333;
+                border-radius: 50%;
+                animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+                border-color: #333 transparent transparent transparent;
+            }
+
+            .lds-ring div:nth-child(1) {
+                animation-delay: -0.45s;
+            }
+
+            .lds-ring div:nth-child(2) {
+                animation-delay: -0.3s;
+            }
+
+            .lds-ring div:nth-child(3) {
+                animation-delay: -0.15s;
+            }
+
+            @keyframes lds-ring {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .checkbox {
+
+                border: 1px solid #AD1457;
+                display: inline-block;
+                height: 20px;
+                width: 20px;
+                text-align: center;
+                margin-right: 4px;
+                vertical-align: middle;
+
+            }
+
+            .todo-title {
+                height: 20px;
+                display: inline-block;
+            }
+
+            .todo {
+                margin-bottom: 8px;
+            }
+
+            #debug-info {
+                text-align: center;
+                font-size: 0.8em;
+                border-bottom: 1px solid #AD1457;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="debug-info">
+            version:{{version}} | hostname: {{hostname}}
+        </div>
+        <div id="top">
+            <h1><img src="https://storage.googleapis.com/assets-brian-jp/hooli-logo.png">List</h1>
+        </div>
+        <div id="spinner" class="view">
+            <div class="lds-ring">
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+            <div id="spinner-msg">
+                Loading Application
+            </div>
+        </div>
+        <div id="landing" class="view">
+            <button id="new-list">Start a new list!</button>
+        </div>
+        <div id="list" class="view">
+            <div id="todos"></div>
+            <div>
+                <input type="text" id="todo-text">
+                <button id="add-task">Add</button>
+            </div>
+        </div>
+        <script>
+
+            const hostname  = window.location.hostname;
+            const isLocal   = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            const wsAddress = isLocal ? `${hostname}:8000/ws` : `${hostname}/ws`;
+
+            class ViewManager {
+
+                constructor () {
+                    this.views      = {};
+                    this.activeView = null;
+                }
+
+                addView (name, elm) {
+
+                    this.views[name] = elm;
+
+                    // If we have no views, we set the first view to be the active view.
+                    if (this.activeView === null) {
+
+                        this.activeView = elm;
+                        this.showView(name);
+
+                    }
+
+                }
+
+                showView (name) {
+
+                    this.activeView.classList.remove('view__active');
+                    this.activeView = this.views[name];
+                    this.activeView.classList.add('view__active');
+
+                }
+
+            }
+
+            const viewManager = new ViewManager();
+            viewManager.addView('spinner', document.querySelector('#spinner'));
+            viewManager.addView('landing', document.querySelector('#landing'));
+            viewManager.addView('list', document.querySelector('#list'));
+
+            /**
+             * Modified from "https://www.w3resource.com/javascript-exercises/javascript-math-exercise-23.php"
+             * @returns {string}
+             */
+            const createUUID = () => {
+
+                let dt = new Date().getTime();
+
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+
+                    let r = (dt + Math.random() * 16) % 16 | 0;
+                    dt    = Math.floor(dt / 16);
+
+                    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+
+                });
+
+            };
+
+            /**
+             * Elements go here.
+             */
+
+            const newListBtn   = document.querySelector('#new-list');
+            const spinnerMsg   = document.querySelector('#spinner-msg');
+            const todos        = document.querySelector('#todos');
+            const todoInputElm = document.querySelector('#todo-text');
+
+            newListBtn.addEventListener('click', () => {
+
+                const uuid             = createUUID();
+                document.location.hash = createUUID();
+
+                connectToList(uuid);
+
+            });
+
+            const addTodo = (todo) => {
+
+                const elm      = document.createElement('div');
+                elm.className  = 'todo';
+                elm.dataset.id = todo.id;
+
+                const cb     = document.createElement('span');
+                cb.className = 'checkbox';
+
+                const title       = document.createElement('span');
+                title.className   = 'todo-title';
+                title.textContent = todo.task;
+
+                elm.appendChild(cb);
+                elm.appendChild(title);
+
+                todos.appendChild(elm);
+
+                cb.addEventListener('click', () => {
+
+                    todo.done = !todo.done;
+                    console.log('I am going through changes');
+                    sendUpdate(todo);
+
+                });
+
+            };
+
+            const updateTodo = (todo) => {
+
+                const elm = document.querySelector(`[data-id="${todo.id}"]`);
+                const cb  = elm.querySelector('.checkbox');
+
+                if (todo.done === true) {
+
+                    const i     = document.createElement('i');
+                    i.className = 'fas fa-check';
+                    cb.appendChild(i);
+
+                } else {
+
+                    if (cb.firstChild) {
+                        cb.removeChild(cb.firstChild);
+                    }
+
+                }
+
+            };
+
+            const sendUpdate = (todo) => {
+
+                return fetch('/api/todos', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(todo)
+                });
+
+            };
+
+            const getTodos = (listid) => {
+                return fetch(`api/todos?id=${listid}`);
+            };
+
+            /**
+             * This is the core logic for lists.
+             */
+            const connectToList = (listId) => {
+
+                // First show the spinner
+                viewManager.showView('spinner');
+
+                const todos  = [];
+                const socket = new WebSocket(`ws://${wsAddress}`);
+                const addBtn = document.querySelector('#add-task');
+
+                socket.addEventListener('open', (evt) => {
+
+                    console.log('Connected!');
+
+                    socket.send(JSON.stringify({'cmd': 'subscribe', listId}));
+                    viewManager.showView('list');
+
+                });
+
+                // Listen for messages
+                socket.addEventListener('message', (evt) => {
+
+                    let todo;
+
+                    console.log('New message <=', evt.data);
+
+                    try {
+                        todo = JSON.parse(evt.data);
+                    } catch (e) {
+                        return;
+                    }
+
+                    if (todos.filter(t => todo.id === t.id).length !== 0) {
+
+                        console.log('existing todo =>', todo);
+                        updateTodo(todo);
+
+                    } else {
+
+                        console.log('new todo =>', todo);
+                        addTodo(todo, socket);
+
+                        todos.push(todo);
+
+                    }
+
+                });
+
+                socket.addEventListener('close', (evt) => {
+
+                    spinnerMsg.textContent = `A connection error occurred: ${evt.code}`;
+                    viewManager.showView('spinner');
+
+                });
+
+                addBtn.addEventListener('click', () => {
+
+                    sendUpdate({list: listId, task: todoInputElm.value, done: false}).then(() => {
+
+                        todoInputElm.value = '';
+
+                    });
+
+                });
+
+                getTodos(listId).then(r => r.json()).then(ts => {
+
+                    ts.forEach(t => {
+
+                        addTodo(t);
+                        todos.push(t);
+
+                    });
+
+                });
+
+            };
+
+            /**
+             * Quick hash check
+             */
+
+            if (window.location.hash !== '') {
+
+                const listId = window.location.hash.replace('#', '');
+                connectToList(listId);
+
+            } else {
+
+                viewManager.showView('landing');
+
+            }
+        </script>
+    </body>
+</html>

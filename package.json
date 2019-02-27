@@ -1,0 +1,19 @@
+{
+  "name": "foodo-list",
+  "version": "1.0.0",
+  "description": "For a Kubernetes demo",
+  "main": "socker-server.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {
+    "redis": "^2.8.0",
+    "websocket": "^1.0.28"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Brian de Heus",
+  "license": "ISC"
+}
