@@ -27,4 +27,4 @@ spec:
         image: briandeheus/api-server:v1
         name: api-server
         ports:
-        - containerPort: 8000
+        - containerPort: 5000
